@@ -429,8 +429,28 @@ input:checked + .slider:before {
     transform: translateX(24px); /* Dịch chuyển nút tròn khi bật */
 }
 
-
 /* ... (Giữ nguyên toàn bộ CSS của khu vực kết quả và responsive design) ... */
+/* ➤ Nút toàn màn hình */
+.fullscreen-button {
+    background-color: #8e44ad;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    margin-bottom: 20px;
+    box-shadow: 0 5px 10px rgba(142, 68, 173, 0.2);
+}
+
+.fullscreen-button:hover {
+    background-color: #732d91;
+}
+.bgm-toggle {
+    margin: 10px;
+    padding: 8px 16px;
+    font-size: 16px;
+}
 .explanation-area {
     background: #fffbe6;
     border: 2px solid #f1c40f;
