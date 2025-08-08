@@ -45,7 +45,7 @@ const audioCorrect = new Audio('sounds/correct.mp3');
 const audioWrong = new Audio('sounds/wrong.mp3');
 const audioClick = new Audio('sounds/click.mp3');
 const audioFinish = new Audio('sounds/finish.mp3');
-//const audioStart = new Audio('sounds/start.mp3');
+const audioStart = new Audio('sounds/start.mp3');
 const audioRestart = new Audio('sounds/restart.mp3');
 const audioWarning = new Audio('sounds/warning.mp3'); // Âm thanh cảnh báo thời gian hết
 const audioTimeout = new Audio('sounds/timeout.mp3');
@@ -84,12 +84,12 @@ function formatTime(seconds) {
     const minutes = Math.floor(seconds / 60);
     // Tính số giây còn lại sau khi đã tính phút.
     const remainingSeconds = seconds % 60;
-    // Sử dụng pad để thêm số 0 vào đầu nếu số nhỏ hơn 10 (ví dụ: 05)
-    return `${String(minutes).pad(2, '0')}:${String(remainingSeconds).pad(2, '0')}`;
+    // Sử dụng padStart để thêm số 0 vào đầu nếu số nhỏ hơn 10 (ví dụ: 05)
+    return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
 // Hàm bắt đầu bộ đếm ngược
-function Timer() {
+function startTimer() {
     // Chỉ bắt đầu nếu timer được bật.
     if (!isTimerEnabled) {
         timerDisplay.textContent = formatTime(TIME_PER_QUESTION); // Vẫn hiển thị thời gian ban đầu
@@ -184,7 +184,7 @@ function displayQuestion() {
     });
 
     // Bắt đầu timer cho câu hỏi mới
-    Timer();
+    startTimer();
 }
 
 // Hàm kiểm tra câu trả lời
@@ -200,7 +200,7 @@ function checkAnswer(isTimeout = false) {
     } else if (selectedChoice === -1 && !isTimeout) {
         // Nếu người dùng bấm "Kiểm Tra" nhưng chưa chọn gì
         alert("Vui lòng chọn một đáp án trước khi kiểm tra!");
-        Timer(); // Bắt đầu lại timer nếu người dùng chưa chọn
+        startTimer(); // Bắt đầu lại timer nếu người dùng chưa chọn
         return;
     }
 
@@ -374,7 +374,7 @@ async function loadQuizData(jsonFile = 'output_quiz_data.json') {
         score = 0;
         questionsAttempted = [];
         displayQuestion();
-        //audioStart.play();
+        audioStart.play();
         timerToggle.checked = isTimerEnabled;
     } catch (error) {
         console.error("Could not load quiz data:", error);
@@ -398,7 +398,7 @@ function playQuestionVoice(questionId) {
     questionVoice = new Howl({
         src: [`sounds/questions/${questionId}.mp3`],
         html5: true,
-        volume: 0.6
+        volume: 1.0
     });
 
     questionVoice.play();
@@ -508,6 +508,3 @@ function speakText(text, gender = 'female') {
     if (voice) utter.voice = voice;
     window.speechSynthesis.speak(utter);
 }
-
-
-
