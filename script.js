@@ -45,7 +45,7 @@ const audioCorrect = new Audio('sounds/correct.mp3');
 const audioWrong = new Audio('sounds/wrong.mp3');
 const audioClick = new Audio('sounds/click.mp3');
 const audioFinish = new Audio('sounds/finish.mp3');
-const audioStart = new Audio('sounds/start.mp3');
+//const audioStart = new Audio('sounds/start.mp3');
 //const audioRestart = new Audio('sounds/restart.mp3');
 const audioWarning = new Audio('sounds/warning.mp3'); // Âm thanh cảnh báo thời gian hết
 const audioTimeout = new Audio('sounds/timeout.mp3');
@@ -374,7 +374,7 @@ async function loadQuizData(jsonFile = 'output_quiz_data.json') {
         score = 0;
         questionsAttempted = [];
         displayQuestion();
-        audioStart.play();
+        //audioStart.play();
         timerToggle.checked = isTimerEnabled;
     } catch (error) {
         console.error("Could not load quiz data:", error);
@@ -508,4 +508,5 @@ function speakText(text, gender = 'female') {
     if (voice) utter.voice = voice;
     window.speechSynthesis.speak(utter);
 }
+
 
