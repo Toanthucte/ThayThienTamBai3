@@ -34,7 +34,7 @@ let questionsAttempted = [];
 // Biến trạng thái Timer
 let timerInterval;          // ID của setInterval cho timer
 const TIME_PER_QUESTION = 30; // Thời gian tối đa cho mỗi câu hỏi (giây)
-const WARNING_TIME = 5;     // Thời gian còn lại để phát cảnh báo (giây)
+const WARNING_TIME = 3;     // Thời gian còn lại để phát cảnh báo (giây)
 // THÊM BIẾN MỚI: Thời gian để phát âm thanh timeout nhưng chưa kết thúc câu hỏi
 const TIMEOUT_AUDIO_TRIGGER_TIME = 15; // Âm thanh timeout sẽ phát khi còn 15 giây
 let timeLeft = TIME_PER_QUESTION; // Thời gian còn lại hiện tại
@@ -48,7 +48,9 @@ const audioFinish = new Audio('sounds/finish.mp3');
 const audioStart = new Audio('sounds/start.mp3');
 const audioRestart = new Audio('sounds/restart.mp3');
 const audioWarning = new Audio('sounds/warning.mp3'); // Âm thanh cảnh báo thời gian hết
-const audioTimeout = new Audio('sounds/timeout.mp3'); // Âm thanh hết giờ
+const audioTimeout = new Audio('sounds/timeout.mp3');
+let questionVoice = null; // Biến lưu âm thanh câu hỏi
+ // Âm thanh hết giờ
 
 // Hàm xáo trộn mảng (Fisher-Yates shuffle algorithm)
 function shuffleArray(array) {
@@ -145,6 +147,8 @@ function displayQuestion() {
     updateProgressBar();
 
     const currentQuestion = data[currentQuestionIndex];
+    // ➤ Phát âm thanh đọc câu hỏi
+    speakText(currentQuestion.questionText, 'female');
     questionText.textContent = currentQuestion.questionText; // SỬA: 'question' -> 'questionText'
 
     choicesContainer.innerHTML = ''; // Xóa các lựa chọn cũ
@@ -165,9 +169,10 @@ function displayQuestion() {
         button.textContent = choiceText;
         button.classList.add('choice-button');
         button.dataset.originalIndex = originalChoices.indexOf(choiceText);
-
+        
         button.addEventListener('click', () => {
             audioClick.play();
+            speakText(choiceText, 'female'); // Thêm dòng này để phát âm thanh đáp án
             document.querySelectorAll('.choice-button').forEach(btn => {
                 btn.classList.remove('selected', 'correct', 'wrong'); // Xóa tất cả trạng thái
                 btn.disabled = false;
@@ -185,6 +190,7 @@ function displayQuestion() {
 // Hàm kiểm tra câu trả lời
 // isTimeout = true nếu hàm được gọi do hết giờ, false nếu do người dùng bấm nút
 function checkAnswer(isTimeout = false) {
+    stopQuestionVoice();
     // Dừng timer ngay lập tức khi người dùng chọn đáp án hoặc hết giờ
     stopTimer();
 
@@ -199,6 +205,8 @@ function checkAnswer(isTimeout = false) {
     }
 
     const currentQuestion = data[currentQuestionIndex];
+    // ➤ Phát âm thanh đọc câu hỏi
+
     const correctOriginalIndex = currentQuestion.correctAnswerIndex; // SỬA: 'answer' -> 'correctAnswerIndex'
 
     // isCorrect là true nếu selectedChoice trùng với correctOriginalIndex VÀ người dùng đã chọn (selectedChoice !== -1)
@@ -249,6 +257,10 @@ function checkAnswer(isTimeout = false) {
     submitButton.classList.add('hidden');
     explanationArea.classList.remove('hidden');
     explanationText.textContent = currentQuestion.explanation;
+    // Phát âm thanh giải thích sau 8 giây
+        setTimeout(() => {
+        speakText(currentQuestion.explanation, 'male');
+    }, 8000); // 8000 ms = 8 giây
 
     if (currentQuestionIndex < data.length - 1) {
         continueButton.classList.remove('hidden');
@@ -260,6 +272,7 @@ function checkAnswer(isTimeout = false) {
 
 // Hàm chuyển sang câu hỏi kế tiếp hoặc kết thúc trò chơi
 function nextQuestion() {
+    stopQuestionVoice();
     currentQuestionIndex++;
     if (currentQuestionIndex < data.length) {
         displayQuestion();
@@ -270,6 +283,7 @@ function nextQuestion() {
 
 // Hàm hiển thị kết quả cuối cùng
 function showResult() {
+    stopQuestionVoice();
     audioFinish.play();
     questionArea.classList.add('hidden');
     explanationArea.classList.add('hidden');
@@ -314,7 +328,8 @@ function reviewWrongAnswers() {
 
 // Hàm khởi động lại trò chơi
 function restartGame() {
-    audioRestart.play();
+    stopQuestionVoice();
+    //audioRestart.play();// XÓA hoặc COMMENT dòng này để không phát âm thanh khi chơi lại
     currentQuestionIndex = 0;
     score = 0;
     selectedChoice = -1;
@@ -345,21 +360,21 @@ timerToggle.addEventListener('change', () => {
     }
 });
 
-
 // Khởi tạo trò chơi khi trang web tải xong
 // Hàm tải dữ liệu câu hỏi từ file JSON
-async function loadQuizData() {
+async function loadQuizData(jsonFile = 'output_quiz_data.json') {
     try {
-        const response = await fetch('output_quiz_data.json');
+        const response = await fetch(jsonFile);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         data = await response.json();
-        // Xáo trộn dữ liệu sau khi tải
-        data = shuffleArray(data); // Đảm bảo các câu hỏi được xáo trộn mỗi lần tải
+        data = shuffleArray(data);
+        currentQuestionIndex = 0;
+        score = 0;
+        questionsAttempted = [];
         displayQuestion();
         audioStart.play();
-        // Đảm bảo trạng thái timerToggle được thiết lập đúng khi tải trang
         timerToggle.checked = isTimerEnabled;
     } catch (error) {
         console.error("Could not load quiz data:", error);
@@ -375,5 +390,121 @@ async function loadQuizData() {
     }
 }
 
+
+
+function playQuestionVoice(questionId) {
+    stopQuestionVoice(); // Đảm bảo dừng âm thanh trước khi phát
+
+    questionVoice = new Howl({
+        src: [`sounds/questions/${questionId}.mp3`],
+        html5: true,
+        volume: 1.0
+    });
+
+    questionVoice.play();
+}
+
+
+
+
+function stopQuestionVoice() {
+    if (questionVoice && questionVoice.playing()) {
+        questionVoice.stop();
+    }
+}
+
+
 // Khởi tạo trò chơi khi trang web tải xong
-window.addEventListener('load', loadQuizData); // Gọi hàm tải dữ liệu khi trang web được tải.
+window.addEventListener('load', () => {
+    const quizSelect = document.getElementById('quiz-select');
+    if (quizSelect) {
+        loadQuizData(quizSelect.value);
+    } else {
+        loadQuizData();
+    }
+}); // Gọi hàm tải dữ liệu khi trang web được tải.
+
+// ➤ Cho phép phát âm thanh sau lần click đầu tiên
+document.body.addEventListener('click', () => {
+    if (questionVoice && !questionVoice.playing()) {
+        questionVoice.play();
+    }
+}, { once: true });
+const fullscreenButton = document.getElementById('fullscreen-button');
+fullscreenButton.addEventListener('click', () => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+    } else if (elem.mozRequestFullScreen) { // Firefox
+        elem.mozRequestFullScreen();
+    } else if (elem.webkitRequestFullscreen) { // Chrome, Safari, Opera
+        elem.webkitRequestFullscreen();
+    } else if (elem.msRequestFullscreen) { // IE/Edge
+        elem.msRequestFullscreen();
+    }
+});
+
+// Âm thanh nền
+let bgm = new Howl({
+    src: ['sounds/background.mp3'],
+    html5: true,
+    loop: true,
+    volume: 0.1
+});
+let isBgmPlaying = false; // Mặc định tắt
+
+// Hàm phát/dừng âm thanh nền
+function toggleBgm() {
+    if (isBgmPlaying) {
+        bgm.pause();
+    } else {
+        bgm.play();
+        bgm.volume(0.1); // Đặt lại volume sau khi play, giúp mobile nhận giá trị này
+    }
+    isBgmPlaying = !isBgmPlaying;
+}
+
+// Gán sự kiện cho nút âm thanh nền (nếu có)
+const bgmButton = document.getElementById('bgm-toggle');
+if (bgmButton) {
+    bgmButton.addEventListener('click', toggleBgm);
+}
+
+const quizSelect = document.getElementById('quiz-select');
+if (quizSelect) {
+    quizSelect.addEventListener('change', function() {
+        loadQuizData(this.value);
+    });
+}
+
+// Hàm phát âm thanh giải thích
+function playExplanationVoice(text) {
+    // Dừng mọi phát âm cũ
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'vi-VN'; // Tiếng Việt
+    utter.rate = 1; // Tốc độ đọc
+    window.speechSynthesis.speak(utter);
+}
+
+// ➤ Cho phép phát âm thanh sau lần click đầu tiên
+document.body.addEventListener('click', () => {
+    if (questionVoice && !questionVoice.playing()) {
+        questionVoice.play();
+    }
+}, { once: true });
+
+function speakText(text, gender = 'female') {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'vi-VN';
+    utter.rate = 1;
+    // Chọn voice nữ nếu có
+    const voices = window.speechSynthesis.getVoices().filter(v => v.lang === 'vi-VN');
+    let voice = voices.find(v => v.name.toLowerCase().includes('nữ')) || voices[0];
+    if (gender === 'male') {
+        voice = voices.find(v => v.name.toLowerCase().includes('nam')) || voices[0];
+    }
+    if (voice) utter.voice = voice;
+    window.speechSynthesis.speak(utter);
+}
